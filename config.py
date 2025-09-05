@@ -88,7 +88,7 @@ NEWS_SOURCES = [
 # Digest Configuration
 DIGEST_CONFIG = {
     'max_articles_per_source': 10,
-    'max_total_articles': 10,
+    'max_total_articles': 8,
     'digest_schedule': '08:00',  # Daily at 8 AM
     'timezone': 'UTC',
     'summary_length': 200,  # characters

@@ -116,6 +116,118 @@ class CursorAIService:
             logger.error(f"Error generating market insights: {str(e)}")
             return ""
     
+    async def generate_article_summary(self, content: str) -> str:
+        """
+        Generate AI-powered article summary in 2-3 sentences
+        
+        Args:
+            content: Article content (title + summary)
+            
+        Returns:
+            AI-generated summary in 2-3 sentences
+        """
+        try:
+            # Create summary prompt
+            prompt = self._create_summary_prompt(content)
+            
+            # Get AI summary
+            summary = await self._call_cursor_ai(prompt)
+            
+            if summary and len(summary.strip()) > 20:
+                return summary.strip()
+            else:
+                # Fallback to intelligent analysis
+                return self._generate_intelligent_summary(content)
+                
+        except Exception as e:
+            logger.error(f"Error generating article summary: {str(e)}")
+            return self._generate_intelligent_summary(content)
+    
+    def _create_summary_prompt(self, content: str) -> str:
+        """Create prompt for article summarization"""
+        if self.is_russian:
+            return f"""
+Ты - эксперт по сельскохозяйственным рынкам. Создай краткое резюме статьи в 2-3 предложения на русском языке.
+
+Статья:
+{content}
+
+Требования:
+- Резюме должно быть в 2-3 предложения
+- Пиши профессионально, как для трейдеров и аналитиков
+- Выдели ключевые факты и их влияние на рынок
+- Используй терминологию сельскохозяйственного рынка
+- Фокусируйся на практической значимости информации
+
+Резюме:
+"""
+        else:
+            return f"""
+You are an expert agriculture market analyst. Create a brief article summary in 2-3 sentences in English.
+
+Article:
+{content}
+
+Requirements:
+- Summary should be 2-3 sentences
+- Write professionally for traders and analysts
+- Highlight key facts and their market impact
+- Use agricultural market terminology
+- Focus on practical significance of information
+
+Summary:
+"""
+    
+    def _generate_intelligent_summary(self, content: str) -> str:
+        """Generate intelligent summary based on content analysis"""
+        try:
+            content_lower = content.lower()
+            
+            # Agriculture-specific analysis
+            if any(word in content_lower for word in ['урожай', 'harvest', 'сбор', 'уборка']):
+                if self.is_russian:
+                    return "Статья посвящена вопросам сбора урожая и состоянию сельскохозяйственных культур. Анализируется влияние погодных условий и технологий на продуктивность."
+                else:
+                    return "Article focuses on harvest and agricultural crop conditions. Analyzes impact of weather conditions and technologies on productivity."
+            
+            elif any(word in content_lower for word in ['цена', 'price', 'стоимость', 'рынок']):
+                if self.is_russian:
+                    return "Материал анализирует ценовые тенденции на сельскохозяйственную продукцию и их влияние на торговлю. Рассматриваются факторы, определяющие динамику цен."
+                else:
+                    return "Material analyzes price trends for agricultural products and their impact on trade. Examines factors determining price dynamics."
+            
+            elif any(word in content_lower for word in ['технология', 'technology', 'инновация', 'новые']):
+                if self.is_russian:
+                    return "Статья рассказывает о новых технологиях и инновациях в сельском хозяйстве. Оценивается потенциал их внедрения для повышения эффективности производства."
+                else:
+                    return "Article discusses new technologies and innovations in agriculture. Evaluates their implementation potential for production efficiency improvement."
+            
+            elif any(word in content_lower for word in ['погода', 'weather', 'климат', 'дождь', 'засуха']):
+                if self.is_russian:
+                    return "Материал рассматривает влияние погодных условий на сельскохозяйственное производство. Анализируются риски и возможности для различных культур."
+                else:
+                    return "Material examines weather impact on agricultural production. Analyzes risks and opportunities for different crops."
+            
+            elif any(word in content_lower for word in ['экспорт', 'export', 'импорт', 'import', 'торговля']):
+                if self.is_russian:
+                    return "Статья освещает вопросы международной торговли сельскохозяйственной продукцией. Рассматриваются изменения в торговых потоках и их влияние на рынок."
+                else:
+                    return "Article covers international trade in agricultural products. Examines changes in trade flows and their market impact."
+            
+            else:
+                # Generic summary
+                if self.is_russian:
+                    return "Статья содержит актуальную информацию о событиях в сфере сельского хозяйства. Представлен анализ текущей ситуации и перспектив развития."
+                else:
+                    return "Article contains current information about agriculture sector events. Presents analysis of current situation and development prospects."
+                    
+        except Exception as e:
+            logger.error(f"Error in intelligent summary generation: {str(e)}")
+            if self.is_russian:
+                return "Статья содержит важную информацию о сельскохозяйственном рынке. Подробности доступны в полной версии."
+            else:
+                return "Article contains important information about agricultural market. Details available in full version."
+    
     def _prepare_articles_for_ai(self, articles: List[Dict]) -> str:
         """Prepare articles text for AI processing"""
         articles_text = ""

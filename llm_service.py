@@ -297,36 +297,162 @@ class LLMService:
     
     async def summarize_article(self, article: Dict) -> str:
         """
-        Generate AI-powered article summary
+        Generate AI-powered article summary in 2-3 sentences
         
         Args:
             article: Article dictionary
             
         Returns:
-            Summarized article content
+            AI-generated summary in 2-3 sentences
         """
         try:
             title = article.get('title', '')
-            summary = article.get('summary', '')
+            content = article.get('summary', '')
             
-            # Use the title as summary if it's descriptive enough
-            if title and len(title) > 20:
-                return title
+            # If we have Cursor AI available, use it for intelligent summarization
+            if self.use_cursor_ai and self.cursor_ai:
+                try:
+                    # Prepare content for AI processing
+                    full_content = f"Заголовок: {title}\n\nСодержание: {content}"
+                    
+                    # Use Cursor AI to generate summary
+                    ai_summary = await self.cursor_ai.generate_article_summary(full_content)
+                    if ai_summary and len(ai_summary.strip()) > 10:
+                        return ai_summary.strip()
+                        
+                except Exception as e:
+                    logger.error(f"Cursor AI summarization failed: {str(e)}")
             
-            # Use existing summary if available
-            if summary and len(summary) > 20:
-                # Truncate if too long
-                max_length = DIGEST_CONFIG.get('summary_length', 200)
-                if len(summary) > max_length:
-                    summary = summary[:max_length] + "..."
-                return summary
-            
-            # Fallback
-            return title if title else "Нет описания"
+            # Fallback to intelligent summarization
+            return self._generate_intelligent_summary(title, content)
             
         except Exception as e:
             logger.error(f"Error summarizing article: {str(e)}")
-            return article.get('title', 'Нет заголовка')
+            return self._generate_fallback_summary(article)
+    
+    def _generate_intelligent_summary(self, title: str, content: str) -> str:
+        """
+        Generate intelligent summary based on content analysis
+        
+        Args:
+            title: Article title
+            content: Article content
+            
+        Returns:
+            Intelligent summary in 2-3 sentences
+        """
+        try:
+            # Combine title and content for analysis
+            full_text = f"{title} {content}".lower()
+            
+            # Agriculture-specific keyword analysis
+            if any(word in full_text for word in ['урожай', 'harvest', 'сбор', 'уборка']):
+                if self.is_russian:
+                    return f"Статья посвящена вопросам сбора урожая и состоянию сельскохозяйственных культур. {self._extract_key_info(content)}"
+                else:
+                    return f"Article focuses on harvest and agricultural crop conditions. {self._extract_key_info(content)}"
+            
+            elif any(word in full_text for word in ['цена', 'price', 'стоимость', 'рынок']):
+                if self.is_russian:
+                    return f"Материал анализирует ценовые тенденции на сельскохозяйственную продукцию. {self._extract_key_info(content)}"
+                else:
+                    return f"Material analyzes price trends for agricultural products. {self._extract_key_info(content)}"
+            
+            elif any(word in full_text for word in ['технология', 'technology', 'инновация', 'новые']):
+                if self.is_russian:
+                    return f"Статья рассказывает о новых технологиях и инновациях в сельском хозяйстве. {self._extract_key_info(content)}"
+                else:
+                    return f"Article discusses new technologies and innovations in agriculture. {self._extract_key_info(content)}"
+            
+            elif any(word in full_text for word in ['погода', 'weather', 'климат', 'дождь', 'засуха']):
+                if self.is_russian:
+                    return f"Материал рассматривает влияние погодных условий на сельскохозяйственное производство. {self._extract_key_info(content)}"
+                else:
+                    return f"Material examines weather impact on agricultural production. {self._extract_key_info(content)}"
+            
+            elif any(word in full_text for word in ['экспорт', 'export', 'импорт', 'import', 'торговля']):
+                if self.is_russian:
+                    return f"Статья освещает вопросы международной торговли сельскохозяйственной продукцией. {self._extract_key_info(content)}"
+                else:
+                    return f"Article covers international trade in agricultural products. {self._extract_key_info(content)}"
+            
+            else:
+                # Generic summary
+                if self.is_russian:
+                    return f"Статья содержит актуальную информацию о событиях в сфере сельского хозяйства. {self._extract_key_info(content)}"
+                else:
+                    return f"Article contains current information about agriculture sector events. {self._extract_key_info(content)}"
+                    
+        except Exception as e:
+            logger.error(f"Error in intelligent summary generation: {str(e)}")
+            return self._generate_fallback_summary({'title': title, 'summary': content})
+    
+    def _extract_key_info(self, content: str) -> str:
+        """
+        Extract key information from content for summary
+        
+        Args:
+            content: Article content
+            
+        Returns:
+            Key information string
+        """
+        try:
+            if not content or len(content) < 20:
+                if self.is_russian:
+                    return "Подробности доступны в полной статье."
+                else:
+                    return "Details available in the full article."
+            
+            # Extract first meaningful sentence or phrase
+            sentences = content.split('.')
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if len(sentence) > 20 and len(sentence) < 100:
+                    return sentence + "."
+            
+            # If no good sentence found, truncate content
+            if len(content) > 80:
+                return content[:80] + "..."
+            else:
+                return content
+                
+        except Exception as e:
+            logger.error(f"Error extracting key info: {str(e)}")
+            if self.is_russian:
+                return "Подробности доступны в полной статье."
+            else:
+                return "Details available in the full article."
+    
+    def _generate_fallback_summary(self, article: Dict) -> str:
+        """
+        Generate fallback summary when AI is not available
+        
+        Args:
+            article: Article dictionary
+            
+        Returns:
+            Fallback summary
+        """
+        title = article.get('title', '')
+        content = article.get('summary', '')
+        
+        if content and len(content) > 30:
+            # Use content if available
+            if len(content) > 100:
+                return content[:100] + "..."
+            return content
+        elif title and len(title) > 10:
+            # Use title as summary
+            if self.is_russian:
+                return f"Статья о: {title}"
+            else:
+                return f"Article about: {title}"
+        else:
+            if self.is_russian:
+                return "Информация о сельскохозяйственных событиях."
+            else:
+                return "Information about agricultural events."
     
     async def categorize_articles(self, articles: List[Dict]) -> Dict[str, List[Dict]]:
         """

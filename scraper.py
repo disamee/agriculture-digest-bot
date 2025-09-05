@@ -149,11 +149,19 @@ class NewsScraper:
                 parent = link_elem.parent
                 for _ in range(3):  # Check up to 3 parent levels
                     if parent:
-                        title_elem = parent.find(['h1', 'h2', 'h3', 'h4', '.title', '.headline'])
+                        title_elem = parent.find(['h1', 'h2', 'h3', 'h4', '.title', '.headline', '.article-title', '.news-title'])
                         if title_elem:
                             title = title_elem.get_text().strip()
                             break
                         parent = parent.parent
+                
+                # If still no title, try to find it in the same container
+                if not title or len(title) < 10:
+                    container = link_elem.find_parent(['div', 'article', 'section'])
+                    if container:
+                        title_elem = container.find(['h1', 'h2', 'h3', 'h4', '.title', '.headline'])
+                        if title_elem:
+                            title = title_elem.get_text().strip()
             
             # Get full article content
             full_content = self._get_article_content(article_url, source)
@@ -239,12 +247,17 @@ class NewsScraper:
                 '.entry-content',
                 '.article-body',
                 '.news-content',
+                '.article-text',
+                '.news-text',
+                '.content-text',
                 'article p',
                 '.content p',
                 'main p',
+                '.text p',
                 'article',
                 '.post',
-                '.entry'
+                '.entry',
+                '.news-item'
             ]
             
             content_text = ""
@@ -254,11 +267,17 @@ class NewsScraper:
                     # Get all text from the content element
                     paragraphs = content_elem.find_all('p')
                     if paragraphs:
-                        content_text = ' '.join([p.get_text().strip() for p in paragraphs[:5]])  # First 5 paragraphs
-                        break
+                        # Filter out very short paragraphs and join them
+                        valid_paragraphs = [p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 20]
+                        if valid_paragraphs:
+                            content_text = ' '.join(valid_paragraphs[:3])  # First 3 meaningful paragraphs
+                            break
                     else:
-                        content_text = content_elem.get_text().strip()
-                        break
+                        # If no paragraphs, get all text and clean it
+                        full_text = content_elem.get_text().strip()
+                        if len(full_text) > 50:  # Only use if substantial content
+                            content_text = full_text
+                            break
             
             # Clean and limit content
             if content_text:

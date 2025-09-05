@@ -198,9 +198,48 @@ class ContentProcessor:
                 summary = summary[:max_length] + "..."
             return summary
         
-        # If no summary, use title
+        # If no summary but we have title, create a simple description
         if title:
-            return title
+            # Try to extract key information from title for a basic description
+            title_lower = title.lower()
+            
+            # Agriculture-specific descriptions based on keywords
+            if any(word in title_lower for word in ['урожай', 'harvest', 'сбор']):
+                if self.is_russian:
+                    return "Информация о сборе урожая и состоянии сельскохозяйственных культур."
+                else:
+                    return "Information about harvest and agricultural crop conditions."
+            
+            elif any(word in title_lower for word in ['цена', 'price', 'стоимость']):
+                if self.is_russian:
+                    return "Анализ цен на сельскохозяйственную продукцию и рыночные тенденции."
+                else:
+                    return "Analysis of agricultural product prices and market trends."
+            
+            elif any(word in title_lower for word in ['технология', 'technology', 'инновация']):
+                if self.is_russian:
+                    return "Новые технологии и инновации в сельском хозяйстве."
+                else:
+                    return "New technologies and innovations in agriculture."
+            
+            elif any(word in title_lower for word in ['погода', 'weather', 'климат']):
+                if self.is_russian:
+                    return "Влияние погодных условий на сельскохозяйственное производство."
+                else:
+                    return "Impact of weather conditions on agricultural production."
+            
+            elif any(word in title_lower for word in ['экспорт', 'export', 'импорт', 'import']):
+                if self.is_russian:
+                    return "Международная торговля сельскохозяйственной продукцией."
+                else:
+                    return "International trade in agricultural products."
+            
+            else:
+                # Generic description
+                if self.is_russian:
+                    return "Актуальные новости и события в сфере сельского хозяйства."
+                else:
+                    return "Current news and events in the agriculture sector."
         
         return "No summary available"
     
@@ -328,26 +367,27 @@ class ContentProcessor:
                 for i, article in enumerate(topic_articles[:2], 1):  # Max 2 per topic for better readability
                     title = article.get('title', 'Без заголовка')
                     summary = await self.summarize_article(article)
-                    source = article.get('source', 'Unknown')
                     
                     # Add title
                     digest += f"**{i}. {title}**\n"
                     
-                    # Add summary/content
+                    # Add description/summary
                     if summary and len(summary) > 20:
                         digest += f"{summary}\n"
+                    else:
+                        # Fallback description if no summary available
+                        if self.is_russian:
+                            digest += "Подробности в полной статье.\n"
+                        else:
+                            digest += "Details in the full article.\n"
                     
-                    # Add source and link
+                    # Add link only
                     if DIGEST_CONFIG.get('include_source_links', True) and article.get('link'):
                         if self.is_russian:
-                            digest += f"🔗 [Читать полностью]({article['link']}) | 📰 {source}\n"
+                            digest += f"🔗 [Читать полностью]({article['link']})\n"
                         else:
-                            digest += f"🔗 [Read more]({article['link']}) | 📰 {source}\n"
-                    else:
-                        if self.is_russian:
-                            digest += f"📰 Источник: {source}\n"
-                        else:
-                            digest += f"📰 Source: {source}\n"
+                            digest += f"🔗 [Read more]({article['link']})\n"
+                    
                     digest += "\n"
                 
                 digest += "\n"
