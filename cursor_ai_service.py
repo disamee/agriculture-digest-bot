@@ -147,33 +147,33 @@ class CursorAIService:
         """Create prompt for article summarization"""
         if self.is_russian:
             return f"""
-Ты - эксперт по сельскохозяйственным рынкам. Создай краткое резюме статьи в 2-3 предложения на русском языке.
+Ты - эксперт по сельскохозяйственным рынкам. Создай краткий пересказ статьи в 2-3 предложения на русском языке.
 
 Статья:
 {content}
 
 Требования:
-- Резюме должно быть в 2-3 предложения
-- Пиши профессионально, как для трейдеров и аналитиков
-- Выдели ключевые факты и их влияние на рынок
-- Используй терминологию сельскохозяйственного рынка
-- Фокусируйся на практической значимости информации
+- Перескажи ключевые факты из статьи своими словами
+- НЕ используй фразы типа "статья говорит", "в статье написано", "материал анализирует"
+- Начинай сразу с фактов: "Цены выросли на...", "Урожай составил...", "Экспорт увеличился..."
+- Сохрани конкретные цифры, даты, названия компаний/регионов
+- Пиши как прямой пересказ событий, а не как описание статьи
 
 Резюме:
 """
         else:
             return f"""
-You are an expert agriculture market analyst. Create a brief article summary in 2-3 sentences in English.
+You are an expert agriculture market analyst. Create a brief article retelling in 2-3 sentences in English.
 
 Article:
 {content}
 
 Requirements:
-- Summary should be 2-3 sentences
-- Write professionally for traders and analysts
-- Highlight key facts and their market impact
-- Use agricultural market terminology
-- Focus on practical significance of information
+- Retell key facts from the article in your own words
+- DO NOT use phrases like "article says", "material analyzes", "article discusses"
+- Start directly with facts: "Prices rose by...", "Harvest reached...", "Export increased..."
+- Preserve specific numbers, dates, company/region names
+- Write as direct retelling of events, not as article description
 
 Summary:
 """
@@ -181,52 +181,71 @@ Summary:
     def _generate_intelligent_summary(self, content: str) -> str:
         """Generate intelligent summary based on content analysis"""
         try:
+            # Extract key information from content
             content_lower = content.lower()
             
-            # Agriculture-specific analysis
+            # Try to extract specific facts and numbers
+            import re
+            
+            # Look for numbers and percentages
+            numbers = re.findall(r'\d+[.,]?\d*%?', content)
+            
+            # Look for key phrases
             if any(word in content_lower for word in ['урожай', 'harvest', 'сбор', 'уборка']):
                 if self.is_russian:
-                    return "Статья посвящена вопросам сбора урожая и состоянию сельскохозяйственных культур. Анализируется влияние погодных условий и технологий на продуктивность."
+                    if numbers:
+                        return f"Урожай составляет {numbers[0]} тонн. Сбор проходит в сложных погодных условиях."
+                    else:
+                        return "Начался сбор урожая сельскохозяйственных культур. Погодные условия влияют на продуктивность."
                 else:
-                    return "Article focuses on harvest and agricultural crop conditions. Analyzes impact of weather conditions and technologies on productivity."
+                    if numbers:
+                        return f"Harvest reached {numbers[0]} tons. Collection proceeds under challenging weather conditions."
+                    else:
+                        return "Agricultural crop harvest has begun. Weather conditions affect productivity."
             
             elif any(word in content_lower for word in ['цена', 'price', 'стоимость', 'рынок']):
                 if self.is_russian:
-                    return "Материал анализирует ценовые тенденции на сельскохозяйственную продукцию и их влияние на торговлю. Рассматриваются факторы, определяющие динамику цен."
+                    if numbers:
+                        return f"Цены на сельхозпродукцию составляют {numbers[0]} тенге за тонну. Рынок демонстрирует волатильность."
+                    else:
+                        return "Цены на сельскохозяйственную продукцию изменяются. Рынок показывает нестабильность."
                 else:
-                    return "Material analyzes price trends for agricultural products and their impact on trade. Examines factors determining price dynamics."
-            
-            elif any(word in content_lower for word in ['технология', 'technology', 'инновация', 'новые']):
-                if self.is_russian:
-                    return "Статья рассказывает о новых технологиях и инновациях в сельском хозяйстве. Оценивается потенциал их внедрения для повышения эффективности производства."
-                else:
-                    return "Article discusses new technologies and innovations in agriculture. Evaluates their implementation potential for production efficiency improvement."
-            
-            elif any(word in content_lower for word in ['погода', 'weather', 'климат', 'дождь', 'засуха']):
-                if self.is_russian:
-                    return "Материал рассматривает влияние погодных условий на сельскохозяйственное производство. Анализируются риски и возможности для различных культур."
-                else:
-                    return "Material examines weather impact on agricultural production. Analyzes risks and opportunities for different crops."
+                    if numbers:
+                        return f"Agricultural product prices reach {numbers[0]} per ton. Market shows volatility."
+                    else:
+                        return "Agricultural product prices are changing. Market shows instability."
             
             elif any(word in content_lower for word in ['экспорт', 'export', 'импорт', 'import', 'торговля']):
                 if self.is_russian:
-                    return "Статья освещает вопросы международной торговли сельскохозяйственной продукцией. Рассматриваются изменения в торговых потоках и их влияние на рынок."
+                    if numbers:
+                        return f"Экспорт сельхозпродукции составил {numbers[0]} тонн. Торговые потоки изменяются."
+                    else:
+                        return "Экспорт сельскохозяйственной продукции растет. Торговые отношения развиваются."
                 else:
-                    return "Article covers international trade in agricultural products. Examines changes in trade flows and their market impact."
+                    if numbers:
+                        return f"Agricultural exports reached {numbers[0]} tons. Trade flows are changing."
+                    else:
+                        return "Agricultural exports are growing. Trade relations are developing."
             
             else:
-                # Generic summary
+                # Generic summary with extracted facts
                 if self.is_russian:
-                    return "Статья содержит актуальную информацию о событиях в сфере сельского хозяйства. Представлен анализ текущей ситуации и перспектив развития."
+                    if numbers:
+                        return f"Показатели составляют {numbers[0]}. Ситуация в сельском хозяйстве развивается."
+                    else:
+                        return "События в сфере сельского хозяйства продолжаются. Ситуация требует внимания."
                 else:
-                    return "Article contains current information about agriculture sector events. Presents analysis of current situation and development prospects."
+                    if numbers:
+                        return f"Indicators reach {numbers[0]}. Agricultural situation is developing."
+                    else:
+                        return "Agricultural sector events continue. Situation requires attention."
                     
         except Exception as e:
             logger.error(f"Error in intelligent summary generation: {str(e)}")
             if self.is_russian:
-                return "Статья содержит важную информацию о сельскохозяйственном рынке. Подробности доступны в полной версии."
+                return "События в сельском хозяйстве развиваются. Подробности в полной статье."
             else:
-                return "Article contains important information about agricultural market. Details available in full version."
+                return "Agricultural events are developing. Details in full article."
     
     def _prepare_articles_for_ai(self, articles: List[Dict]) -> str:
         """Prepare articles text for AI processing"""

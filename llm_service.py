@@ -345,43 +345,59 @@ class LLMService:
             # Combine title and content for analysis
             full_text = f"{title} {content}".lower()
             
+            # Try to extract specific facts and numbers
+            import re
+            numbers = re.findall(r'\d+[.,]?\d*%?', full_text)
+            
             # Agriculture-specific keyword analysis
             if any(word in full_text for word in ['урожай', 'harvest', 'сбор', 'уборка']):
                 if self.is_russian:
-                    return f"Статья посвящена вопросам сбора урожая и состоянию сельскохозяйственных культур. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Урожай составляет {numbers[0]} тонн. {self._extract_key_info(content)}"
+                    else:
+                        return f"Начался сбор урожая. {self._extract_key_info(content)}"
                 else:
-                    return f"Article focuses on harvest and agricultural crop conditions. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Harvest reached {numbers[0]} tons. {self._extract_key_info(content)}"
+                    else:
+                        return f"Harvest has begun. {self._extract_key_info(content)}"
             
             elif any(word in full_text for word in ['цена', 'price', 'стоимость', 'рынок']):
                 if self.is_russian:
-                    return f"Материал анализирует ценовые тенденции на сельскохозяйственную продукцию. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Цены составляют {numbers[0]} тенге за тонну. {self._extract_key_info(content)}"
+                    else:
+                        return f"Цены изменяются. {self._extract_key_info(content)}"
                 else:
-                    return f"Material analyzes price trends for agricultural products. {self._extract_key_info(content)}"
-            
-            elif any(word in full_text for word in ['технология', 'technology', 'инновация', 'новые']):
-                if self.is_russian:
-                    return f"Статья рассказывает о новых технологиях и инновациях в сельском хозяйстве. {self._extract_key_info(content)}"
-                else:
-                    return f"Article discusses new technologies and innovations in agriculture. {self._extract_key_info(content)}"
-            
-            elif any(word in full_text for word in ['погода', 'weather', 'климат', 'дождь', 'засуха']):
-                if self.is_russian:
-                    return f"Материал рассматривает влияние погодных условий на сельскохозяйственное производство. {self._extract_key_info(content)}"
-                else:
-                    return f"Material examines weather impact on agricultural production. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Prices reach {numbers[0]} per ton. {self._extract_key_info(content)}"
+                    else:
+                        return f"Prices are changing. {self._extract_key_info(content)}"
             
             elif any(word in full_text for word in ['экспорт', 'export', 'импорт', 'import', 'торговля']):
                 if self.is_russian:
-                    return f"Статья освещает вопросы международной торговли сельскохозяйственной продукцией. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Экспорт составил {numbers[0]} тонн. {self._extract_key_info(content)}"
+                    else:
+                        return f"Экспорт растет. {self._extract_key_info(content)}"
                 else:
-                    return f"Article covers international trade in agricultural products. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Exports reached {numbers[0]} tons. {self._extract_key_info(content)}"
+                    else:
+                        return f"Exports are growing. {self._extract_key_info(content)}"
             
             else:
-                # Generic summary
+                # Generic summary with extracted facts
                 if self.is_russian:
-                    return f"Статья содержит актуальную информацию о событиях в сфере сельского хозяйства. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Показатели составляют {numbers[0]}. {self._extract_key_info(content)}"
+                    else:
+                        return f"События продолжаются. {self._extract_key_info(content)}"
                 else:
-                    return f"Article contains current information about agriculture sector events. {self._extract_key_info(content)}"
+                    if numbers:
+                        return f"Indicators reach {numbers[0]}. {self._extract_key_info(content)}"
+                    else:
+                        return f"Events continue. {self._extract_key_info(content)}"
                     
         except Exception as e:
             logger.error(f"Error in intelligent summary generation: {str(e)}")
