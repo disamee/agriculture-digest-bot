@@ -25,7 +25,8 @@ class LLMService:
         # Initialize OpenAI if enabled
         if self.use_openai and OPENAI_API_KEY:
             try:
-                openai.api_key = OPENAI_API_KEY
+                # Test OpenAI connection
+                client = openai.OpenAI(api_key=OPENAI_API_KEY)
                 logger.info("OpenAI service initialized successfully")
             except Exception as e:
                 logger.error(f"Failed to initialize OpenAI service: {str(e)}")
@@ -412,7 +413,8 @@ Selected article numbers:
 """
             
             # Call OpenAI API
-            response = await openai.ChatCompletion.acreate(
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            response = await client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert agriculture market analyst."},
@@ -497,7 +499,8 @@ Summary:
 """
             
             # Call OpenAI API
-            response = await openai.ChatCompletion.acreate(
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            response = await client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert agriculture market analyst."},
