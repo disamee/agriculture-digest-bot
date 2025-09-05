@@ -187,61 +187,9 @@ class ContentProcessor:
         return self._fallback_summarize_article(article)
     
     def _fallback_summarize_article(self, article: Dict) -> str:
-        """Fallback summarization method when LLM is not available"""
-        title = self.clean_text(article.get('title', ''))
-        summary = self.clean_text(article.get('summary', ''))
-        
-        # If we have a good summary, use it (truncated if too long)
-        if summary and len(summary) > 50:
-            max_length = DIGEST_CONFIG.get('summary_length', 200)
-            if len(summary) > max_length:
-                summary = summary[:max_length] + "..."
-            return summary
-        
-        # If no summary but we have title, create a simple description
-        if title:
-            # Try to extract key information from title for a basic description
-            title_lower = title.lower()
-            
-            # Agriculture-specific descriptions based on keywords
-            if any(word in title_lower for word in ['урожай', 'harvest', 'сбор']):
-                if self.is_russian:
-                    return "Информация о сборе урожая и состоянии сельскохозяйственных культур."
-                else:
-                    return "Information about harvest and agricultural crop conditions."
-            
-            elif any(word in title_lower for word in ['цена', 'price', 'стоимость']):
-                if self.is_russian:
-                    return "Анализ цен на сельскохозяйственную продукцию и рыночные тенденции."
-                else:
-                    return "Analysis of agricultural product prices and market trends."
-            
-            elif any(word in title_lower for word in ['технология', 'technology', 'инновация']):
-                if self.is_russian:
-                    return "Новые технологии и инновации в сельском хозяйстве."
-                else:
-                    return "New technologies and innovations in agriculture."
-            
-            elif any(word in title_lower for word in ['погода', 'weather', 'климат']):
-                if self.is_russian:
-                    return "Влияние погодных условий на сельскохозяйственное производство."
-                else:
-                    return "Impact of weather conditions on agricultural production."
-            
-            elif any(word in title_lower for word in ['экспорт', 'export', 'импорт', 'import']):
-                if self.is_russian:
-                    return "Международная торговля сельскохозяйственной продукцией."
-                else:
-                    return "International trade in agricultural products."
-            
-            else:
-                # Generic description
-                if self.is_russian:
-                    return "Актуальные новости и события в сфере сельского хозяйства."
-                else:
-                    return "Current news and events in the agriculture sector."
-        
-        return "No summary available"
+        """No fallback - only AI should generate summaries"""
+        # Return empty string - no hard-coded fallbacks
+        return ""
     
     async def group_articles_by_topic(self, articles: List[Dict]) -> Dict[str, List[Dict]]:
         """
@@ -368,11 +316,11 @@ class ContentProcessor:
             if summary and len(summary) > 20:
                 digest += f"{summary}\n"
             else:
-                # Fallback description if no summary available
+                # If no AI summary, skip description
                 if self.is_russian:
-                    digest += "Подробности в полной статье.\n"
+                    digest += "Описание недоступно (требуется ИИ).\n"
                 else:
-                    digest += "Details in the full article.\n"
+                    digest += "Description unavailable (AI required).\n"
             
             # Add link only
             if DIGEST_CONFIG.get('include_source_links', True) and article.get('link'):

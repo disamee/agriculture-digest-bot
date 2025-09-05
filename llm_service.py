@@ -323,12 +323,13 @@ class LLMService:
                 except Exception as e:
                     logger.error(f"Cursor AI summarization failed: {str(e)}")
             
-            # Fallback to intelligent summarization
-            return self._generate_intelligent_summary(title, content)
+            # If AI fails, return empty string - no fallback
+            logger.warning("AI summarization failed, returning empty summary")
+            return ""
             
         except Exception as e:
             logger.error(f"Error summarizing article: {str(e)}")
-            return self._generate_fallback_summary(article)
+            return ""
     
     def _generate_intelligent_summary(self, title: str, content: str) -> str:
         """

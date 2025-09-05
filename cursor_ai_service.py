@@ -136,12 +136,13 @@ class CursorAIService:
             if summary and len(summary.strip()) > 20:
                 return summary.strip()
             else:
-                # Fallback to intelligent analysis
-                return self._generate_intelligent_summary(content)
+                # If AI fails, return empty string - no fallback
+                logger.warning("AI summary generation failed, returning empty summary")
+                return ""
                 
         except Exception as e:
             logger.error(f"Error generating article summary: {str(e)}")
-            return self._generate_intelligent_summary(content)
+            return ""
     
     def _create_summary_prompt(self, content: str) -> str:
         """Create prompt for article summarization"""

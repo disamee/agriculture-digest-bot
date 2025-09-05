@@ -310,9 +310,11 @@ IMPORTANT:
                 if summary and len(summary) > 20:
                     digest += f"{summary}\n"
                 else:
-                    # Generate intelligent summary based on title
-                    intelligent_summary = self._generate_intelligent_summary(f"{title} {summary}")
-                    digest += f"{intelligent_summary}\n"
+                    # If no AI summary, skip description
+                    if self.is_russian:
+                        digest += "Описание недоступно (требуется ИИ).\n"
+                    else:
+                        digest += "Description unavailable (AI required).\n"
                 
                 if link:
                     digest += f"🔗 [Читать полностью]({link})\n"
@@ -338,9 +340,11 @@ IMPORTANT:
                 if summary and len(summary) > 20:
                     digest += f"{summary}\n"
                 else:
-                    # Generate intelligent summary based on title
-                    intelligent_summary = self._generate_intelligent_summary(f"{title} {summary}")
-                    digest += f"{intelligent_summary}\n"
+                    # If no AI summary, skip description
+                    if self.is_russian:
+                        digest += "Описание недоступно (требуется ИИ).\n"
+                    else:
+                        digest += "Description unavailable (AI required).\n"
                 
                 if link:
                     digest += f"🔗 [Read more]({link})\n"
