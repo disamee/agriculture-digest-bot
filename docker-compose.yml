@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  agriculture-digest-bot:
+    build: .
+    container_name: agriculture-digest-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID}
+    volumes:
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

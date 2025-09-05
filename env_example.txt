@@ -1,0 +1,10 @@
+# Telegram Bot Configuration
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHANNEL_ID=@your_channel_username
+
+# Language Configuration
+LANGUAGE=ru
+USE_CURSOR_AI=true
+
+# Optional: Custom news sources (JSON format)
+# CUSTOM_NEWS_SOURCES=[{"name": "Custom Source", "url": "https://example.com", "type": "scrape", "selectors": {"title": "h1", "link": "a", "summary": "p"}}]
