@@ -74,7 +74,7 @@ class NewsScraper:
             return []
     
     def _scrape_html(self, source: Dict) -> List[Dict]:
-        """Scrape HTML content"""
+        """Scrape HTML content with improved article extraction"""
         try:
             response = self._make_request(source['url'])
             if not response:
@@ -83,36 +83,51 @@ class NewsScraper:
             soup = BeautifulSoup(response.content, 'html.parser')
             articles = []
             
-            # Find article containers (common patterns)
-            article_selectors = [
-                'article',
-                '.article',
-                '.news-item',
-                '.post',
-                '.entry',
-                '[class*="article"]',
-                '[class*="news"]',
-                '[class*="post"]'
-            ]
-            
-            article_elements = []
-            for selector in article_selectors:
-                elements = soup.select(selector)
-                if elements:
-                    article_elements = elements
-                    break
-            
-            if not article_elements:
-                # Fallback: look for common link patterns
-                article_elements = soup.find_all('a', href=True)
-                article_elements = [elem for elem in article_elements 
-                                 if any(keyword in elem.get_text().lower() 
-                                       for keyword in ['agriculture', 'farm', 'crop', 'livestock', 'food'])]
-            
-            for element in article_elements[:SCRAPING_CONFIG.get('max_articles_per_source', 5)]:
-                article = self._extract_article_data(element, source)
-                if article and article['title']:
-                    articles.append(article)
+            # Use source-specific selectors if available
+            if 'selectors' in source:
+                selectors = source['selectors']
+                title_selector = selectors.get('title', 'h1, h2, h3, .title, .headline')
+                link_selector = selectors.get('link', 'a[href*="/news/"], a[href*="/article/"]')
+                summary_selector = selectors.get('summary', 'p, .summary, .excerpt')
+                
+                # Find all potential article links
+                article_links = soup.select(link_selector)
+                
+                for link_elem in article_links[:10]:  # Get up to 10 articles
+                    article = self._extract_article_from_link(link_elem, source, soup)
+                    if article and article['title']:
+                        articles.append(article)
+            else:
+                # Fallback to generic scraping
+                article_selectors = [
+                    'article',
+                    '.article',
+                    '.news-item',
+                    '.post',
+                    '.entry',
+                    '[class*="article"]',
+                    '[class*="news"]',
+                    '[class*="post"]'
+                ]
+                
+                article_elements = []
+                for selector in article_selectors:
+                    elements = soup.select(selector)
+                    if elements:
+                        article_elements = elements
+                        break
+                
+                if not article_elements:
+                    # Fallback: look for common link patterns
+                    article_elements = soup.find_all('a', href=True)
+                    article_elements = [elem for elem in article_elements 
+                                     if any(keyword in elem.get_text().lower() 
+                                           for keyword in ['agriculture', 'farm', 'crop', 'livestock', 'food'])]
+                
+                for element in article_elements[:10]:
+                    article = self._extract_article_data(element, source)
+                    if article and article['title']:
+                        articles.append(article)
             
             logger.info(f"Scraped {len(articles)} articles from {source['name']} HTML")
             return articles
@@ -121,6 +136,42 @@ class NewsScraper:
             logger.error(f"Error scraping HTML for {source['name']}: {str(e)}")
             return []
     
+    def _extract_article_from_link(self, link_elem, source: Dict, soup: BeautifulSoup) -> Optional[Dict]:
+        """Extract article data from a link element with full content"""
+        try:
+            # Get the article URL
+            article_url = urljoin(source['url'], link_elem.get('href', ''))
+            
+            # Extract title from link text or nearby elements
+            title = link_elem.get_text().strip()
+            if not title or len(title) < 10:
+                # Try to find title in parent elements
+                parent = link_elem.parent
+                for _ in range(3):  # Check up to 3 parent levels
+                    if parent:
+                        title_elem = parent.find(['h1', 'h2', 'h3', 'h4', '.title', '.headline'])
+                        if title_elem:
+                            title = title_elem.get_text().strip()
+                            break
+                        parent = parent.parent
+            
+            # Get full article content
+            full_content = self._get_article_content(article_url, source)
+            
+            if title and len(title) > 5:
+                return {
+                    'title': title.strip(),
+                    'link': article_url,
+                    'summary': full_content,
+                    'source': source['name']
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting article from link: {str(e)}")
+            return None
+
     def _extract_article_data(self, element, source: Dict) -> Optional[Dict]:
         """Extract article data from HTML element"""
         try:
@@ -171,6 +222,56 @@ class NewsScraper:
                 continue
         return None
     
+    def _get_article_content(self, article_url: str, source: Dict) -> str:
+        """Get full article content from individual article page"""
+        try:
+            response = self._make_request(article_url)
+            if not response:
+                return ""
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Try to find article content using common selectors
+            content_selectors = [
+                'article .content',
+                'article .article-content',
+                '.post-content',
+                '.entry-content',
+                '.article-body',
+                '.news-content',
+                'article p',
+                '.content p',
+                'main p',
+                'article',
+                '.post',
+                '.entry'
+            ]
+            
+            content_text = ""
+            for selector in content_selectors:
+                content_elem = soup.select_one(selector)
+                if content_elem:
+                    # Get all text from the content element
+                    paragraphs = content_elem.find_all('p')
+                    if paragraphs:
+                        content_text = ' '.join([p.get_text().strip() for p in paragraphs[:5]])  # First 5 paragraphs
+                        break
+                    else:
+                        content_text = content_elem.get_text().strip()
+                        break
+            
+            # Clean and limit content
+            if content_text:
+                content_text = ' '.join(content_text.split())  # Remove extra whitespace
+                if len(content_text) > 500:
+                    content_text = content_text[:500] + "..."
+            
+            return content_text
+            
+        except Exception as e:
+            logger.error(f"Error getting article content from {article_url}: {str(e)}")
+            return ""
+
     def _find_link(self, element, base_url: str) -> Optional[str]:
         """Find and normalize link URL"""
         try:

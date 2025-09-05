@@ -35,23 +35,23 @@ class AgricultureDigestBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
         welcome_message = """
-🌾 **Welcome to Agriculture Digest Bot!**
+🌾 **Добро пожаловать в бот Agriculture Digest!**
 
-This bot provides daily agriculture market news and insights.
+Этот бот предоставляет ежедневные новости и аналитику сельскохозяйственного рынка.
 
-**Available Commands:**
-/start - Show this welcome message
-/digest - Generate and send current digest
-/help - Show help information
-/status - Show bot status
+**Доступные команды:**
+/start - Показать приветственное сообщение
+/digest - Создать и отправить текущий дайджест
+/help - Показать справку
+/status - Показать статус бота
 
-**Features:**
-• Daily automated digest delivery
-• Curated agriculture news from multiple sources
-• Topic-based organization
-• Direct links to full articles
+**Возможности:**
+• Ежедневная автоматическая доставка дайджестов
+• Курируемые новости сельского хозяйства из множества источников
+• Организация по темам
+• Прямые ссылки на полные статьи
 
-The bot will automatically send daily digests to the configured channel.
+Бот автоматически отправляет ежедневные дайджесты в настроенный канал.
         """
         
         await update.message.reply_text(welcome_message, parse_mode='Markdown')
@@ -59,26 +59,26 @@ The bot will automatically send daily digests to the configured channel.
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
         help_message = """
-📖 **Agriculture Digest Bot Help**
+📖 **Справка по боту Agriculture Digest**
 
-**Commands:**
-• `/start` - Welcome message and bot introduction
-• `/digest` - Manually generate and send current digest
-• `/help` - Show this help message
-• `/status` - Show bot status and configuration
+**Команды:**
+• `/start` - Приветственное сообщение и введение в бота
+• `/digest` - Вручную создать и отправить текущий дайджест
+• `/help` - Показать эту справку
+• `/status` - Показать статус и конфигурацию бота
 
-**How it works:**
-1. Bot scrapes agriculture news from configured sources
-2. Filters and ranks articles by relevance
-3. Groups articles by topic (Crops, Livestock, Technology, etc.)
-4. Generates formatted digest with summaries and links
-5. Sends digest to Telegram channel
+**Как это работает:**
+1. Бот собирает новости сельского хозяйства из настроенных источников
+2. Фильтрует и ранжирует статьи по релевантности
+3. Группирует статьи по темам (Урожай, Животноводство, Технологии и т.д.)
+4. Создает форматированный дайджест с резюме и ссылками
+5. Отправляет дайджест в Telegram канал
 
-**Sources:** The bot monitors multiple agriculture news sources including USDA, AgWeb, Farm Progress, and others.
+**Источники:** Бот отслеживает множество источников новостей сельского хозяйства.
 
-**Schedule:** Daily digests are sent automatically at 8:00 AM UTC.
+**Расписание:** Ежедневные дайджесты отправляются автоматически в 8:00 UTC.
 
-For support or suggestions, contact the bot administrator.
+Для поддержки или предложений обратитесь к администратору бота.
         """
         
         await update.message.reply_text(help_message, parse_mode='Markdown')
@@ -90,22 +90,22 @@ For support or suggestions, contact the bot administrator.
             bot_info = await context.bot.get_me()
             
             status_message = f"""
-🤖 **Bot Status**
+🤖 **Статус бота**
 
-**Bot Information:**
-• Name: {bot_info.first_name}
-• Username: @{bot_info.username}
+**Информация о боте:**
+• Имя: {bot_info.first_name}
+• Имя пользователя: @{bot_info.username}
 • ID: {bot_info.id}
 
-**Configuration:**
-• Channel: {self.channel_id}
-• Schedule: {DIGEST_CONFIG.get('digest_schedule', 'Not set')}
-• Max Articles: {DIGEST_CONFIG.get('max_total_articles', 'Not set')}
-• Timezone: {DIGEST_CONFIG.get('timezone', 'Not set')}
+**Конфигурация:**
+• Канал: {self.channel_id}
+• Расписание: {DIGEST_CONFIG.get('digest_schedule', 'Не установлено')}
+• Макс. статей: {DIGEST_CONFIG.get('max_total_articles', 'Не установлено')}
+• Часовой пояс: {DIGEST_CONFIG.get('timezone', 'Не установлено')}
 
-**Last Update:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
+**Последнее обновление:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
 
-**Status:** ✅ Active and monitoring agriculture news sources
+**Статус:** ✅ Активен и отслеживает источники новостей сельского хозяйства
             """
             
             await update.message.reply_text(status_message, parse_mode='Markdown')
@@ -118,7 +118,7 @@ For support or suggestions, contact the bot administrator.
         """Handle /digest command - manually generate digest"""
         try:
             # Send processing message
-            processing_msg = await update.message.reply_text("🔄 Generating agriculture digest...")
+            processing_msg = await update.message.reply_text("🔄 Создаю дайджест сельскохозяйственного рынка...")
             
             # Generate digest
             digest = await self.generate_digest()
@@ -130,11 +130,11 @@ For support or suggestions, contact the bot administrator.
                 # Send digest
                 await update.message.reply_text(digest, parse_mode='Markdown', disable_web_page_preview=True)
             else:
-                await processing_msg.edit_text("❌ Failed to generate digest. Please try again later.")
+                await processing_msg.edit_text("❌ Не удалось создать дайджест. Попробуйте позже.")
                 
         except Exception as e:
             logger.error(f"Error generating digest: {str(e)}")
-            await update.message.reply_text("❌ Error generating digest. Please try again later.")
+            await update.message.reply_text("❌ Ошибка при создании дайджеста. Попробуйте позже.")
     
     async def generate_digest(self) -> str:
         """
@@ -150,13 +150,13 @@ For support or suggestions, contact the bot administrator.
             articles = self.scraper.scrape_all_sources()
             
             if not articles:
-                return "📰 No articles found from any sources today."
+                return "📰 Сегодня статьи из источников не найдены."
             
             # Filter relevant articles
             relevant_articles = self.processor.filter_relevant_articles(articles)
             
             if not relevant_articles:
-                return "🌾 No agriculture-related articles found today."
+                return "🌾 Сегодня не найдено статей, связанных с сельским хозяйством."
             
             # Rank articles
             ranked_articles = await self.processor.rank_articles(relevant_articles)

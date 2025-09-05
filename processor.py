@@ -325,21 +325,29 @@ class ContentProcessor:
             if topic_articles:
                 digest += f"**{topic}**\n"
                 
-                for i, article in enumerate(topic_articles[:3], 1):  # Max 3 per topic
+                for i, article in enumerate(topic_articles[:2], 1):  # Max 2 per topic for better readability
+                    title = article.get('title', 'Без заголовка')
                     summary = await self.summarize_article(article)
                     source = article.get('source', 'Unknown')
                     
-                    digest += f"{i}. {summary}\n"
+                    # Add title
+                    digest += f"**{i}. {title}**\n"
+                    
+                    # Add summary/content
+                    if summary and len(summary) > 20:
+                        digest += f"{summary}\n"
+                    
+                    # Add source and link
                     if DIGEST_CONFIG.get('include_source_links', True) and article.get('link'):
                         if self.is_russian:
-                            digest += f"   🔗 [Читать полностью]({article['link']}) | Источник: {source}\n"
+                            digest += f"🔗 [Читать полностью]({article['link']}) | 📰 {source}\n"
                         else:
-                            digest += f"   🔗 [Read more]({article['link']}) | Source: {source}\n"
+                            digest += f"🔗 [Read more]({article['link']}) | 📰 {source}\n"
                     else:
                         if self.is_russian:
-                            digest += f"   📰 Источник: {source}\n"
+                            digest += f"📰 Источник: {source}\n"
                         else:
-                            digest += f"   📰 Source: {source}\n"
+                            digest += f"📰 Source: {source}\n"
                     digest += "\n"
                 
                 digest += "\n"
