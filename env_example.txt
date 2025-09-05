@@ -4,7 +4,11 @@ TELEGRAM_CHANNEL_ID=@your_channel_username
 
 # Language Configuration
 LANGUAGE=ru
-USE_CURSOR_AI=true
+
+# AI Configuration
+USE_OPENAI=true
+OPENAI_API_KEY=your_openai_api_key_here
+USE_CURSOR_AI=false
 
 # Optional: Custom news sources (JSON format)
 # CUSTOM_NEWS_SOURCES=[{"name": "Custom Source", "url": "https://example.com", "type": "scrape", "selectors": {"title": "h1", "link": "a", "summary": "p"}}]

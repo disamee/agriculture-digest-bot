@@ -4,8 +4,9 @@ LLM Service for AI-powered agriculture digest generation using Cursor AI
 import logging
 import json
 import re
+import openai
 from typing import List, Dict, Optional, Tuple
-from config import USE_CURSOR_AI, LANGUAGE, DIGEST_CONFIG
+from config import USE_CURSOR_AI, USE_OPENAI, OPENAI_API_KEY, LANGUAGE, DIGEST_CONFIG
 from cursor_ai_service import CursorAIService
 
 # Set up logging
@@ -17,8 +18,18 @@ class LLMService:
     
     def __init__(self):
         self.use_cursor_ai = USE_CURSOR_AI
+        self.use_openai = USE_OPENAI
         self.language = LANGUAGE
         self.is_russian = self.language == 'ru'
+        
+        # Initialize OpenAI if enabled
+        if self.use_openai and OPENAI_API_KEY:
+            try:
+                openai.api_key = OPENAI_API_KEY
+                logger.info("OpenAI service initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize OpenAI service: {str(e)}")
+                self.use_openai = False
         
         # Initialize Cursor AI service
         if self.use_cursor_ai:
@@ -31,7 +42,7 @@ class LLMService:
                 self.use_cursor_ai = False
         else:
             self.cursor_ai = None
-            logger.warning("Cursor AI is disabled, using fallback methods")
+            logger.warning("Cursor AI is disabled")
     
     async def rank_and_filter_articles(self, articles: List[Dict]) -> List[Dict]:
         """
@@ -46,6 +57,16 @@ class LLMService:
         if not articles:
             return []
         
+        # Try OpenAI first if available
+        if self.use_openai and OPENAI_API_KEY:
+            try:
+                ranked_articles = await self._openai_rank_articles(articles)
+                logger.info(f"OpenAI ranked {len(ranked_articles)} articles from {len(articles)} total")
+                return ranked_articles
+            except Exception as e:
+                logger.error(f"Error in OpenAI ranking: {str(e)}")
+        
+        # Try Cursor AI if available
         if self.use_cursor_ai and self.cursor_ai:
             try:
                 # Use real Cursor AI for ranking
@@ -55,10 +76,10 @@ class LLMService:
                 
             except Exception as e:
                 logger.error(f"Error in Cursor AI ranking: {str(e)}")
-                return self._fallback_rank_articles(articles)
-        else:
-            # Use fallback ranking
-            return self._fallback_rank_articles(articles)
+        
+        # If all AI fails, return empty list - no fallback
+        logger.warning("All AI ranking failed, returning empty list")
+        return []
     
     def _intelligent_rank_articles(self, articles: List[Dict]) -> List[Dict]:
         """Intelligent ranking algorithm for agriculture articles"""
@@ -309,7 +330,16 @@ class LLMService:
             title = article.get('title', '')
             content = article.get('summary', '')
             
-            # If we have Cursor AI available, use it for intelligent summarization
+            # Try OpenAI first if available
+            if self.use_openai and OPENAI_API_KEY:
+                try:
+                    ai_summary = await self._openai_summarize_article(title, content)
+                    if ai_summary and len(ai_summary.strip()) > 10:
+                        return ai_summary.strip()
+                except Exception as e:
+                    logger.error(f"OpenAI summarization failed: {str(e)}")
+            
+            # Try Cursor AI if available
             if self.use_cursor_ai and self.cursor_ai:
                 try:
                     # Prepare content for AI processing
@@ -323,12 +353,166 @@ class LLMService:
                 except Exception as e:
                     logger.error(f"Cursor AI summarization failed: {str(e)}")
             
-            # If AI fails, return empty string - no fallback
-            logger.warning("AI summarization failed, returning empty summary")
+            # If all AI fails, return empty string - no fallback
+            logger.warning("All AI summarization failed, returning empty summary")
             return ""
             
         except Exception as e:
             logger.error(f"Error summarizing article: {str(e)}")
+            return ""
+    
+    async def _openai_rank_articles(self, articles: List[Dict]) -> List[Dict]:
+        """
+        Use OpenAI to rank and select the best articles for digest
+        
+        Args:
+            articles: List of article dictionaries
+            
+        Returns:
+            AI-ranked and filtered list of articles (max 8)
+        """
+        try:
+            # Prepare articles text for AI
+            articles_text = ""
+            for i, article in enumerate(articles):
+                title = article.get('title', '')
+                content = article.get('summary', '')
+                articles_text += f"{i}. {title}\n{content}\n\n"
+            
+            # Create prompt for ranking
+            if self.is_russian:
+                prompt = f"""
+Ты - эксперт по сельскохозяйственным рынкам. Выбери 8 самых важных и релевантных статей для дайджеста сельскохозяйственного рынка.
+
+Статьи:
+{articles_text}
+
+Требования:
+- Выбери 8 статей с наибольшим влиянием на рынок
+- Приоритет: цены, урожай, экспорт/импорт, технологии, погода
+- Учитывай актуальность и важность для трейдеров
+- Верни только номера статей в формате: [0, 1, 2, 3, 4, 5, 6, 7]
+
+Номера выбранных статей:
+"""
+            else:
+                prompt = f"""
+You are an expert agriculture market analyst. Select 8 most important and relevant articles for agriculture market digest.
+
+Articles:
+{articles_text}
+
+Requirements:
+- Select 8 articles with highest market impact
+- Priority: prices, harvest, export/import, technology, weather
+- Consider relevance and importance for traders
+- Return only article numbers in format: [0, 1, 2, 3, 4, 5, 6, 7]
+
+Selected article numbers:
+"""
+            
+            # Call OpenAI API
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are an expert agriculture market analyst."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=100,
+                temperature=0.1
+            )
+            
+            result = response.choices[0].message.content.strip()
+            logger.info(f"OpenAI ranking result: {result}")
+            
+            # Parse the result to get article indices
+            try:
+                # Extract numbers from the response
+                import re
+                numbers = re.findall(r'\d+', result)
+                indices = [int(num) for num in numbers if int(num) < len(articles)]
+                
+                # Limit to 8 articles
+                indices = indices[:8]
+                
+                # Return selected articles
+                ranked_articles = [articles[i] for i in indices if i < len(articles)]
+                logger.info(f"OpenAI selected {len(ranked_articles)} articles")
+                return ranked_articles
+                
+            except Exception as e:
+                logger.error(f"Error parsing OpenAI ranking result: {str(e)}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error in OpenAI ranking: {str(e)}")
+            return []
+    
+    async def _openai_summarize_article(self, title: str, content: str) -> str:
+        """
+        Use OpenAI to generate article summary
+        
+        Args:
+            title: Article title
+            content: Article content
+            
+        Returns:
+            AI-generated summary in 2-3 sentences
+        """
+        try:
+            # Create prompt for summarization
+            if self.is_russian:
+                prompt = f"""
+Ты - эксперт по сельскохозяйственным рынкам. Создай краткий пересказ статьи в 2-3 предложения на русском языке.
+
+Заголовок: {title}
+
+Содержание: {content}
+
+Требования:
+- Перескажи ключевые факты из статьи своими словами
+- НЕ используй фразы типа "статья говорит", "в статье написано", "материал анализирует"
+- Начинай сразу с фактов: "Цены выросли на...", "Урожай составил...", "Экспорт увеличился..."
+- Сохрани конкретные цифры, даты, названия компаний/регионов
+- Пиши как прямой пересказ событий, а не как описание статьи
+
+Резюме:
+"""
+            else:
+                prompt = f"""
+You are an expert agriculture market analyst. Create a brief article retelling in 2-3 sentences in English.
+
+Title: {title}
+
+Content: {content}
+
+Requirements:
+- Retell key facts from the article in your own words
+- DO NOT use phrases like "article says", "material analyzes", "article discusses"
+- Start directly with facts: "Prices rose by...", "Harvest reached...", "Export increased..."
+- Preserve specific numbers, dates, company/region names
+- Write as direct retelling of events, not as article description
+
+Summary:
+"""
+            
+            # Call OpenAI API
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are an expert agriculture market analyst."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.3
+            )
+            
+            summary = response.choices[0].message.content.strip()
+            logger.info(f"OpenAI generated summary: {summary[:100]}...")
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Error generating OpenAI summary: {str(e)}")
             return ""
     
     def _generate_intelligent_summary(self, title: str, content: str) -> str:

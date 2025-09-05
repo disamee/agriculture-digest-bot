@@ -10,8 +10,10 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHANNEL_ID = os.getenv('TELEGRAM_CHANNEL_ID', '@agriculture_digest')
 
-# LLM Configuration (using Cursor AI)
-USE_CURSOR_AI = os.getenv('USE_CURSOR_AI', 'true').lower() == 'true'
+# LLM Configuration
+USE_CURSOR_AI = os.getenv('USE_CURSOR_AI', 'false').lower() == 'true'
+USE_OPENAI = os.getenv('USE_OPENAI', 'true').lower() == 'true'
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 LANGUAGE = os.getenv('LANGUAGE', 'ru')  # 'ru' for Russian, 'en' for English
 
 # News Sources Configuration
