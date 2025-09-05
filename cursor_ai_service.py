@@ -506,7 +506,7 @@ Continued volatility expected in short term with upward price trend amid limited
     def _generate_ai_ranking_template(self) -> str:
         """Generate AI-style ranking template"""
         return """{
-    "ranked_articles": [0, 1, 2, 3, 4],
+    "ranked_articles": [0, 1, 2, 3, 4, 5, 6, 7],
     "reasoning": "Статьи ранжированы по влиянию на цены, торговую активность и региональной значимости",
     "market_impact": "Высокое влияние на краткосрочные цены и торговые потоки"
 }"""
