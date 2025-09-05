@@ -566,11 +566,19 @@ Regional differences are becoming more pronounced, with particular attention to 
             
             for i, article in enumerate(articles[:8], 1):
                 title = article.get('title', 'Без заголовка')
-                source = article.get('source', 'Неизвестный источник')
+                summary = article.get('summary', '')
                 link = article.get('link', '')
                 
                 digest += f"**{i}. {title}**\n"
-                digest += f"📰 Источник: {source}\n"
+                
+                # Add description/summary
+                if summary and len(summary) > 20:
+                    digest += f"{summary}\n"
+                else:
+                    # Generate intelligent summary based on title
+                    intelligent_summary = self._generate_intelligent_summary(f"{title} {summary}")
+                    digest += f"{intelligent_summary}\n"
+                
                 if link:
                     digest += f"🔗 [Читать полностью]({link})\n"
                 digest += "\n"
@@ -586,11 +594,19 @@ Regional differences are becoming more pronounced, with particular attention to 
             
             for i, article in enumerate(articles[:8], 1):
                 title = article.get('title', 'No title')
-                source = article.get('source', 'Unknown source')
+                summary = article.get('summary', '')
                 link = article.get('link', '')
                 
                 digest += f"**{i}. {title}**\n"
-                digest += f"📰 Source: {source}\n"
+                
+                # Add description/summary
+                if summary and len(summary) > 20:
+                    digest += f"{summary}\n"
+                else:
+                    # Generate intelligent summary based on title
+                    intelligent_summary = self._generate_intelligent_summary(f"{title} {summary}")
+                    digest += f"{intelligent_summary}\n"
+                
                 if link:
                     digest += f"🔗 [Read more]({link})\n"
                 digest += "\n"

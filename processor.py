@@ -344,9 +344,6 @@ class ContentProcessor:
     
     async def _fallback_format_digest(self, articles: List[Dict]) -> str:
         """Fallback digest formatting when LLM is not available"""
-        # Group articles by topic
-        topics = await self.group_articles_by_topic(articles)
-        
         # Create digest header
         if self.is_russian:
             title = DIGEST_CONFIG.get('digest_title_ru', '🌾 Дайджест сельскохозяйственного рынка')
@@ -359,38 +356,32 @@ class ContentProcessor:
             digest = f"{title} - {date_str}\n\n"
             digest += f"📊 **{len(articles)} articles** from {len(set(article['source'] for article in articles))} sources\n\n"
         
-        # Add articles by topic
-        for topic, topic_articles in topics.items():
-            if topic_articles:
-                digest += f"**{topic}**\n"
-                
-                for i, article in enumerate(topic_articles[:2], 1):  # Max 2 per topic for better readability
-                    title = article.get('title', 'Без заголовка')
-                    summary = await self.summarize_article(article)
-                    
-                    # Add title
-                    digest += f"**{i}. {title}**\n"
-                    
-                    # Add description/summary
-                    if summary and len(summary) > 20:
-                        digest += f"{summary}\n"
-                    else:
-                        # Fallback description if no summary available
-                        if self.is_russian:
-                            digest += "Подробности в полной статье.\n"
-                        else:
-                            digest += "Details in the full article.\n"
-                    
-                    # Add link only
-                    if DIGEST_CONFIG.get('include_source_links', True) and article.get('link'):
-                        if self.is_russian:
-                            digest += f"🔗 [Читать полностью]({article['link']})\n"
-                        else:
-                            digest += f"🔗 [Read more]({article['link']})\n"
-                    
-                    digest += "\n"
-                
-                digest += "\n"
+        # Add articles in simple list format
+        for i, article in enumerate(articles[:8], 1):  # Max 8 articles
+            title = article.get('title', 'Без заголовка')
+            summary = await self.summarize_article(article)
+            
+            # Add title
+            digest += f"**{i}. {title}**\n"
+            
+            # Add description/summary
+            if summary and len(summary) > 20:
+                digest += f"{summary}\n"
+            else:
+                # Fallback description if no summary available
+                if self.is_russian:
+                    digest += "Подробности в полной статье.\n"
+                else:
+                    digest += "Details in the full article.\n"
+            
+            # Add link only
+            if DIGEST_CONFIG.get('include_source_links', True) and article.get('link'):
+                if self.is_russian:
+                    digest += f"🔗 [Читать полностью]({article['link']})\n"
+                else:
+                    digest += f"🔗 [Read more]({article['link']})\n"
+            
+            digest += "\n"
         
         # Add footer
         digest += "---\n"
