@@ -127,8 +127,8 @@ class AgricultureDigestBot:
                 # Delete processing message
                 await processing_msg.delete()
                 
-                # Send digest
-                await update.message.reply_text(digest, parse_mode='Markdown', disable_web_page_preview=True)
+                # Send digest (with message splitting)
+                await self._send_long_message_to_user(update, context, digest)
             else:
                 await processing_msg.edit_text("❌ Не удалось создать дайджест. Попробуйте позже.")
                 
@@ -177,13 +177,8 @@ class AgricultureDigestBot:
             digest = await self.generate_digest()
             
             if digest:
-                # Send to channel
-                await context.bot.send_message(
-                    chat_id=self.channel_id,
-                    text=digest,
-                    parse_mode='Markdown',
-                    disable_web_page_preview=True
-                )
+                # Split long messages
+                await self._send_long_message(context, digest)
                 logger.info("Daily digest sent successfully")
             else:
                 logger.warning("Failed to generate digest for daily send")
@@ -192,6 +187,106 @@ class AgricultureDigestBot:
             logger.error(f"Telegram error sending daily digest: {str(e)}")
         except Exception as e:
             logger.error(f"Error sending daily digest: {str(e)}")
+    
+    async def _send_long_message(self, context: ContextTypes.DEFAULT_TYPE, text: str, max_length: int = 4000):
+        """Send long message by splitting it into chunks"""
+        try:
+            if len(text) <= max_length:
+                # Message is short enough, send as is
+                await context.bot.send_message(
+                    chat_id=self.channel_id,
+                    text=text,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                return
+            
+            # Split message into chunks
+            chunks = self._split_message(text, max_length)
+            
+            for i, chunk in enumerate(chunks):
+                # Add continuation indicator for multi-part messages
+                if len(chunks) > 1:
+                    if i == 0:
+                        chunk += f"\n\n_📄 Часть {i+1}/{len(chunks)}_"
+                    else:
+                        chunk = f"_📄 Часть {i+1}/{len(chunks)}_\n\n" + chunk
+                
+                await context.bot.send_message(
+                    chat_id=self.channel_id,
+                    text=chunk,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                
+                # Small delay between messages to avoid rate limiting
+                if i < len(chunks) - 1:
+                    await asyncio.sleep(1)
+                    
+        except Exception as e:
+            logger.error(f"Error sending long message: {str(e)}")
+    
+    def _split_message(self, text: str, max_length: int) -> list:
+        """Split message into chunks at logical break points"""
+        if len(text) <= max_length:
+            return [text]
+        
+        chunks = []
+        current_chunk = ""
+        
+        # Split by articles (look for "**1. " pattern)
+        lines = text.split('\n')
+        
+        for line in lines:
+            # Check if this line would make the chunk too long
+            if len(current_chunk) + len(line) + 1 > max_length and current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = line
+            else:
+                current_chunk += line + '\n'
+        
+        # Add the last chunk
+        if current_chunk.strip():
+            chunks.append(current_chunk.strip())
+        
+        return chunks
+    
+    async def _send_long_message_to_user(self, update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, max_length: int = 4000):
+        """Send long message to user by splitting it into chunks"""
+        try:
+            if len(text) <= max_length:
+                # Message is short enough, send as is
+                await update.message.reply_text(
+                    text,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                return
+            
+            # Split message into chunks
+            chunks = self._split_message(text, max_length)
+            
+            for i, chunk in enumerate(chunks):
+                # Add continuation indicator for multi-part messages
+                if len(chunks) > 1:
+                    if i == 0:
+                        chunk += f"\n\n_📄 Часть {i+1}/{len(chunks)}_"
+                    else:
+                        chunk = f"_📄 Часть {i+1}/{len(chunks)}_\n\n" + chunk
+                
+                await update.message.reply_text(
+                    chunk,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                
+                # Small delay between messages to avoid rate limiting
+                if i < len(chunks) - 1:
+                    await asyncio.sleep(1)
+                    
+        except Exception as e:
+            logger.error(f"Error sending long message to user: {str(e)}")
+            await update.message.reply_text("❌ Ошибка при отправке сообщения. Попробуйте позже.")
     
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle errors"""
