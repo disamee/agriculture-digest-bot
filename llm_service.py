@@ -178,12 +178,12 @@ class LLMService:
                 
             except Exception as e:
                 logger.error(f"Error in Cursor AI digest generation: {str(e)}")
-                return self._generate_fallback_digest(articles)
+                return await self._generate_fallback_digest(articles)
         else:
             # Use fallback digest generation
-            return self._generate_fallback_digest(articles)
+            return await self._generate_fallback_digest(articles)
     
-    def _generate_intelligent_digest(self, articles: List[Dict]) -> str:
+    async def _generate_intelligent_digest(self, articles: List[Dict]) -> str:
         """Generate intelligent digest with market analysis"""
         from datetime import datetime
         
@@ -888,7 +888,7 @@ Summary:
         else:
             return datetime.now().strftime('%B %d, %Y')
     
-    def _generate_fallback_digest(self, articles: List[Dict]) -> str:
+    async def _generate_fallback_digest(self, articles: List[Dict]) -> str:
         """Generate fallback digest if AI fails"""
         from datetime import datetime
         
