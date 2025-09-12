@@ -78,9 +78,13 @@ class RailwayApp:
                 logger.warning("TELEGRAM_BOT_TOKEN not configured, bot will not start")
                 return False
             
-            # Import bot components
-            from telegram_bot import AgricultureDigestBot
-            from scheduler import DigestScheduler
+            # Import bot components with error handling
+            try:
+                from telegram_bot import AgricultureDigestBot
+                from scheduler import DigestScheduler
+            except ImportError as e:
+                logger.error(f"Failed to import bot components: {str(e)}")
+                return False
             
             # Initialize bot
             self.bot = AgricultureDigestBot()
@@ -91,9 +95,13 @@ class RailwayApp:
             await self.bot.application.start()
             await self.bot.application.updater.start_polling()
             
-            # Start scheduler
-            scheduler = DigestScheduler()
-            scheduler.setup_schedule()
+            # Start scheduler (optional, don't fail if it doesn't work)
+            try:
+                scheduler = DigestScheduler()
+                scheduler.setup_schedule()
+                logger.info("Scheduler started successfully")
+            except Exception as e:
+                logger.warning(f"Scheduler failed to start: {str(e)}")
             
             logger.info("Telegram bot started successfully")
             return True
@@ -136,14 +144,21 @@ class RailwayApp:
             self.running = True
             
             logger.info("Starting Agriculture Digest Application...")
+            logger.info(f"Environment: PORT={os.getenv('PORT', '8080')}")
+            logger.info(f"Bot token configured: {bool(os.getenv('TELEGRAM_BOT_TOKEN'))}")
+            logger.info(f"Channel configured: {bool(os.getenv('TELEGRAM_CHANNEL_ID'))}")
             
             # Start web server first (required for Railway health checks)
+            logger.info("Starting web server...")
             web_started = await self.start_web_server()
             if not web_started:
                 logger.error("Failed to start web server, exiting")
-                return
+                sys.exit(1)
+            
+            logger.info("Web server started successfully")
             
             # Try to start bot (optional for health checks)
+            logger.info("Attempting to start bot...")
             bot_started = await self.start_bot()
             if bot_started:
                 logger.info("Bot started successfully")
@@ -151,6 +166,7 @@ class RailwayApp:
                 logger.warning("Bot failed to start, but web server is running")
             
             logger.info("Application is running. Health check available at /health")
+            logger.info("Press Ctrl+C to stop the application")
             
             # Keep the application running
             try:
@@ -163,8 +179,11 @@ class RailwayApp:
                 
         except Exception as e:
             logger.error(f"Application error: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             await self.stop()
-            raise
+            sys.exit(1)
 
 def main():
     """Main function"""
