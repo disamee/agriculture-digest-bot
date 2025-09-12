@@ -457,7 +457,7 @@ Market impact analysis:
             
             # Call OpenAI API
             client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            response = await client.chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are AST Grain, a grain and agricultural commodities trading company."},
@@ -529,7 +529,7 @@ Selected article numbers:
             
             # Call OpenAI API
             client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            response = await client.chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert agriculture market analyst."},
@@ -617,7 +617,7 @@ Summary:
             
             # Call OpenAI API
             client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            response = await client.chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert agriculture market analyst."},
