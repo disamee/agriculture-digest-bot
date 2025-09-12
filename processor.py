@@ -98,7 +98,7 @@ class ContentProcessor:
         """
         if self.use_llm and self.llm_service:
             try:
-                logger.info("Using LLM for article ranking")
+                logger.info("Using LLM for article ranking and filtering")
                 return await self.llm_service.rank_and_filter_articles(articles)
             except Exception as e:
                 logger.error(f"LLM ranking failed: {str(e)}")
@@ -314,13 +314,25 @@ class ContentProcessor:
             
             # Add description/summary
             if summary and len(summary) > 20:
-                digest += f"{summary}\n"
+                digest += f"📝 {summary}\n"
             else:
                 # If no AI summary, skip description
                 if self.is_russian:
-                    digest += "Описание недоступно (требуется ИИ).\n"
+                    digest += "📝 Описание недоступно (требуется ИИ).\n"
                 else:
-                    digest += "Description unavailable (AI required).\n"
+                    digest += "📝 Description unavailable (AI required).\n"
+            
+            # Add market impact analysis
+            if self.use_llm and self.llm_service:
+                try:
+                    market_impact = await self.llm_service.analyze_market_impact(article)
+                    if market_impact:
+                        if self.is_russian:
+                            digest += f"💼 Влияние на рынок: {market_impact}\n"
+                        else:
+                            digest += f"💼 Market Impact: {market_impact}\n"
+                except Exception as e:
+                    logger.error(f"Market impact analysis failed: {str(e)}")
             
             # Add link only
             if DIGEST_CONFIG.get('include_source_links', True) and article.get('link'):

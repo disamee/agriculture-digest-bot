@@ -235,6 +235,16 @@ class LLMService:
             summary += f"**{i}. {title}**\n"
             summary += f"📰 Источник: {source}\n"
             
+            # Add article summary
+            article_summary = await self.summarize_article(article)
+            if article_summary:
+                summary += f"📝 {article_summary}\n"
+            
+            # Add market impact analysis
+            market_impact = await self.analyze_market_impact(article)
+            if market_impact:
+                summary += f"💼 Влияние на рынок: {market_impact}\n"
+            
             if link and DIGEST_CONFIG.get('include_source_links', True):
                 summary += f"🔗 [Читать полностью]({link})\n"
             
@@ -319,13 +329,13 @@ class LLMService:
     
     async def summarize_article(self, article: Dict) -> str:
         """
-        Generate AI-powered article summary in 2-3 sentences
+        Generate AI-powered article summary in exactly 2 sentences
         
         Args:
             article: Article dictionary
             
         Returns:
-            AI-generated summary in 2-3 sentences
+            AI-generated summary in exactly 2 sentences
         """
         try:
             title = article.get('title', '')
@@ -362,6 +372,109 @@ class LLMService:
             logger.error(f"Error summarizing article: {str(e)}")
             return ""
     
+    async def analyze_market_impact(self, article: Dict) -> str:
+        """
+        Analyze market impact from AST Grain trading perspective
+        
+        Args:
+            article: Article dictionary
+            
+        Returns:
+            Market impact analysis in 2-3 sentences
+        """
+        try:
+            title = article.get('title', '')
+            content = article.get('summary', '')
+            
+            # Try OpenAI first if available
+            if self.use_openai and OPENAI_API_KEY:
+                try:
+                    ai_impact = await self._openai_analyze_market_impact(title, content)
+                    if ai_impact and len(ai_impact.strip()) > 10:
+                        return ai_impact.strip()
+                except Exception as e:
+                    logger.error(f"OpenAI market impact analysis failed: {str(e)}")
+            
+            # If all AI fails, return empty string
+            logger.warning("All AI market impact analysis failed, returning empty analysis")
+            return ""
+            
+        except Exception as e:
+            logger.error(f"Error analyzing market impact: {str(e)}")
+            return ""
+    
+    async def _openai_analyze_market_impact(self, title: str, content: str) -> str:
+        """
+        Use OpenAI to analyze market impact from AST Grain trading perspective
+        
+        Args:
+            title: Article title
+            content: Article content
+            
+        Returns:
+            Market impact analysis in 2-3 sentences
+        """
+        try:
+            # Create prompt for market impact analysis
+            if self.is_russian:
+                prompt = f"""
+Ты компания по трейдингу зерна и сельхоз культур AST Grain,
+твоя задача мониторить наиболее важные новости которые могут повлиять на рынки КЗ.
+Выведи итог, как ты можешь повлиять на рынок.
+
+Заголовок: {title}
+
+Содержание: {content}
+
+Требования:
+- Анализируй с точки зрения трейдинговой компании AST Grain
+- Оцени влияние на рынки Казахстана
+- Предложи как компания может использовать эту информацию
+- Максимум 2-3 предложения
+- Пиши на русском языке
+
+Анализ влияния на рынок:
+"""
+            else:
+                prompt = f"""
+You are AST Grain, a grain and agricultural commodities trading company.
+Your task is to monitor the most important news that can affect KZ markets.
+Provide an analysis of how you can influence the market.
+
+Title: {title}
+
+Content: {content}
+
+Requirements:
+- Analyze from AST Grain trading company perspective
+- Assess impact on Kazakhstan markets
+- Suggest how the company can use this information
+- Maximum 2-3 sentences
+- Write in English
+
+Market impact analysis:
+"""
+            
+            # Call OpenAI API
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            response = await client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are AST Grain, a grain and agricultural commodities trading company."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.3
+            )
+            
+            impact_analysis = response.choices[0].message.content.strip()
+            logger.info(f"OpenAI generated market impact: {impact_analysis[:100]}...")
+            return impact_analysis
+            
+        except Exception as e:
+            logger.error(f"Error generating OpenAI market impact analysis: {str(e)}")
+            return ""
+    
     async def _openai_rank_articles(self, articles: List[Dict]) -> List[Dict]:
         """
         Use OpenAI to rank and select the best articles for digest
@@ -389,6 +502,7 @@ class LLMService:
 {articles_text}
 
 Требования:
+- Сначала отфильтруй статьи, оставив только связанные с сельским хозяйством
 - Выбери 8 статей с наибольшим влиянием на рынок
 - Приоритет: цены, урожай, экспорт/импорт, технологии, погода
 - Учитывай актуальность и важность для трейдеров
@@ -404,6 +518,7 @@ Articles:
 {articles_text}
 
 Requirements:
+- First filter articles, keeping only agriculture-related ones
 - Select 8 articles with highest market impact
 - Priority: prices, harvest, export/import, technology, weather
 - Consider relevance and importance for traders
@@ -465,7 +580,7 @@ Selected article numbers:
             # Create prompt for summarization
             if self.is_russian:
                 prompt = f"""
-Ты - эксперт по сельскохозяйственным рынкам. Создай краткий пересказ статьи в 2-3 предложения на русском языке.
+Ты - эксперт по сельскохозяйственным рынкам. Создай краткий пересказ статьи в ТОЧНО 2 предложения на русском языке.
 
 Заголовок: {title}
 
@@ -477,12 +592,13 @@ Selected article numbers:
 - Начинай сразу с фактов: "Цены выросли на...", "Урожай составил...", "Экспорт увеличился..."
 - Сохрани конкретные цифры, даты, названия компаний/регионов
 - Пиши как прямой пересказ событий, а не как описание статьи
+- ОБЯЗАТЕЛЬНО: ровно 2 предложения, не больше и не меньше
 
 Резюме:
 """
             else:
                 prompt = f"""
-You are an expert agriculture market analyst. Create a brief article retelling in 2-3 sentences in English.
+You are an expert agriculture market analyst. Create a brief article retelling in EXACTLY 2 sentences in English.
 
 Title: {title}
 
@@ -494,6 +610,7 @@ Requirements:
 - Start directly with facts: "Prices rose by...", "Harvest reached...", "Export increased..."
 - Preserve specific numbers, dates, company/region names
 - Write as direct retelling of events, not as article description
+- MANDATORY: exactly 2 sentences, no more, no less
 
 Summary:
 """
@@ -790,6 +907,17 @@ Summary:
                 
                 digest += f"**{i}. {title}**\n"
                 digest += f"📰 Источник: {source}\n"
+                
+                # Add article summary
+                article_summary = await self.summarize_article(article)
+                if article_summary:
+                    digest += f"📝 {article_summary}\n"
+                
+                # Add market impact analysis
+                market_impact = await self.analyze_market_impact(article)
+                if market_impact:
+                    digest += f"💼 Влияние на рынок: {market_impact}\n"
+                
                 if link:
                     digest += f"🔗 [Читать полностью]({link})\n"
                 digest += "\n"
@@ -810,6 +938,17 @@ Summary:
                 
                 digest += f"**{i}. {title}**\n"
                 digest += f"📰 Source: {source}\n"
+                
+                # Add article summary
+                article_summary = await self.summarize_article(article)
+                if article_summary:
+                    digest += f"📝 {article_summary}\n"
+                
+                # Add market impact analysis
+                market_impact = await self.analyze_market_impact(article)
+                if market_impact:
+                    digest += f"💼 Market Impact: {market_impact}\n"
+                
                 if link:
                     digest += f"🔗 [Read more]({link})\n"
                 digest += "\n"

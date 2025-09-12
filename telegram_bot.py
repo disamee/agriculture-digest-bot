@@ -152,14 +152,11 @@ class AgricultureDigestBot:
             if not articles:
                 return "📰 Сегодня статьи из источников не найдены."
             
-            # Filter relevant articles
-            relevant_articles = self.processor.filter_relevant_articles(articles)
+            # Rank articles directly (OpenAI will handle filtering and selection)
+            ranked_articles = await self.processor.rank_articles(articles)
             
-            if not relevant_articles:
+            if not ranked_articles:
                 return "🌾 Сегодня не найдено статей, связанных с сельским хозяйством."
-            
-            # Rank articles
-            ranked_articles = await self.processor.rank_articles(relevant_articles)
             
             # Format digest
             digest = await self.processor.format_digest(ranked_articles)
